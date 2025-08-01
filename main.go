@@ -6,14 +6,15 @@ import (
 )
 
 func main() {
+	
+	const port = "8080"
 	mux := http.NewServeMux()
 	
 	server := &http.Server{
-		Addr: ":8080",
+		Addr: ":" + port,
 		Handler: mux,
 	}
 
-	if err := server.ListenAndServe(); err != nil {
-		log.Println("error with Listening to server")
-	}
+	log.Println("Started a server at port:", port)
+	log.Fatal(server.ListenAndServe())
 }
