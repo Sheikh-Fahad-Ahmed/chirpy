@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -45,69 +44,7 @@ func (cfg *apiConfig) resetHandler(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "ok")
 }
 
-func validateHandler(w http.ResponseWriter, r *http.Request) {
-	type respParams struct {
-		Body string `json:"body"`
-	}
 
-	type errorRespParams struct {
-		Error string `json:"error"`
-	}
-
-	type ValidRespParams struct {
-		Valid bool `json:"valid"`
-	}
-
-	decoder := json.NewDecoder(r.Body)
-	params := respParams{}
-	err := decoder.Decode(&params)
-	if err != nil {
-		errResponse := errorRespParams{
-			Error: "Something went wrong",
-		}
-
-		data, err := json.Marshal(errResponse)
-		if err != nil {
-			log.Printf("Error marshaling JSON: %s", err)
-			w.WriteHeader(500)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(400)
-		w.Write(data)
-		return
-	}
-
-	if len(params.Body) > 140 {
-		errResponse := errorRespParams{
-			Error: "Chirp is too long",
-		}
-
-		data, err := json.Marshal(errResponse)
-		if err != nil {
-			log.Printf("Error marshaling JSON: %s", err)
-			w.WriteHeader(500)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(400)
-		w.Write(data)
-	} else {
-		validResponse := ValidRespParams{
-			Valid: true,
-		}
-
-		data, err := json.Marshal(validResponse)
-		if err != nil {
-			log.Printf("Error marshaling JSON: %s", err)
-			w.WriteHeader(500)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(200)
-		w.Write(data)
-	}
-}
 
 func main() {
 
