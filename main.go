@@ -15,7 +15,8 @@ import (
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
-	db *database.Queries
+	db             *database.Queries
+	platform       string
 }
 
 func (cfg *apiConfig) middlewareMetricInc(next http.Handler) http.Handler {
@@ -45,7 +46,12 @@ func (cfg *apiConfig) hitsHandler(w http.ResponseWriter, req *http.Request) {
 	w.Write([]byte(html))
 }
 
-func (cfg *apiConfig) resetHandler(w http.ResponseWriter, req *http.Request) {
+func (cfg *apiConfig) resetHandler(w http.ResponseWriter, r *http.Request) {
+	if cfg.platform != "dev" {
+		errorHandler(w, r, http.StatusForbidden, "", nil)
+		return
+	}
+	cfg.db.DeleteAllUsers(r.Context())
 	cfg.fileserverHits.Store(0)
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	fmt.Fprintf(w, "ok")
@@ -67,7 +73,8 @@ func main() {
 
 	apicfg := apiConfig{
 		fileserverHits: atomic.Int32{},
-		db: dbQueries,
+		db:             dbQueries,
+		platform:       os.Getenv("PLATFORM"),
 	}
 
 	const port = "8080"
@@ -82,6 +89,7 @@ func main() {
 
 	mux.HandleFunc("GET /api/healthz", myHandler)
 	mux.HandleFunc("POST /api/validate_chirp", validateHandler)
+	mux.HandleFunc("POST /api/users", apicfg.userHandler)
 
 	server := &http.Server{
 		Addr:    ":" + port,
