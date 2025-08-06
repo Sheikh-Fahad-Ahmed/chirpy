@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 	"sync/atomic"
+
+	_ "github.com/lib/pq"
 )
 
 type apiConfig struct {
@@ -44,8 +46,6 @@ func (cfg *apiConfig) resetHandler(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "ok")
 }
 
-
-
 func main() {
 
 	apicfg := apiConfig{}
@@ -57,8 +57,6 @@ func main() {
 		http.StripPrefix("/app", http.FileServer(http.Dir("."))),
 	))
 
-	
-	
 	mux.HandleFunc("GET /admin/metrics", apicfg.hitsHandler)
 	mux.HandleFunc("POST /admin/reset", apicfg.resetHandler)
 
