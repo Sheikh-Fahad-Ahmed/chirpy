@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -44,4 +46,38 @@ func (cfg *apiConfig) chirpHandler(w http.ResponseWriter, r *http.Request) {
 			UserID:    chirp.UserID,
 		},
 	})
+}
+
+func toChirps(DBChirps []database.Chirp) []Chirp {
+	chirps := make([]Chirp, len(DBChirps))
+	for i, DBChirp := range DBChirps {
+		chirps[i] = Chirp{
+			ID: DBChirp.ID,
+			CreatedAt: DBChirp.CreatedAt,
+			UpdatedAt: DBChirp.UpdatedAt,
+			Body: DBChirp.Body,
+			UserID: DBChirp.UserID,
+		} 
+	}
+	return chirps
+}
+
+func (cfg *apiConfig) getAllChirps(w http.ResponseWriter, r *http.Request) {
+	
+	DBChirps, err := cfg.db.GetAllChirps(r.Context())
+	if err != nil {
+		log.Println("error getting chips")
+		return
+	}
+
+	chirps := toChirps(DBChirps)
+	w.Header().Set("Content-Type", "application/json")
+	data, err := json.Marshal(chirps)
+	if err != nil {
+		log.Println("error json marshal")
+		w.WriteHeader(500)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write(data)
 }
