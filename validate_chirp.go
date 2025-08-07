@@ -3,37 +3,30 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/google/uuid"
 )
 
 type respParams struct {
-	Body string `json:"body"`
+	Body   string    `json:"body"`
+	UserID uuid.UUID `json:"user_id"`
 }
 
-type errorRespParams struct {
-	Error string `json:"error"`
-}
-
-type cleanRespParams struct {
-	CleanedBody string `json:"cleaned_body"`
-}
-
-func validateHandler(w http.ResponseWriter, r *http.Request) {
+func validateChirpHandler(w http.ResponseWriter, r *http.Request) *respParams {
 
 	decoder := json.NewDecoder(r.Body)
 	params := respParams{}
 	err := decoder.Decode(&params)
 	if err != nil {
 		errorHandler(w, r, http.StatusInternalServerError, "Couldn't decode parameters", err)
-		return
+		return nil
 	}
 
 	if len(params.Body) > 140 {
 		errorHandler(w, r, http.StatusBadRequest, "Chirp too long", nil)
-		return
+		return nil
 	}
 
-	text := profanityHandler(&params)
-	respondWithJSON(w, 200, cleanRespParams{
-		CleanedBody: text,
-	})
+	params.Body = profanityHandler(&params)
+	return &params
 }
