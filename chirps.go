@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 	"time"
@@ -16,6 +15,24 @@ type Chirp struct {
 	UpdatedAt time.Time `json:"updated_at"`
 	Body      string    `json:"body"`
 	UserID    uuid.UUID `json:"user_id"`
+}
+
+func toChirp(DBChirp database.Chirp) Chirp {
+	return Chirp{
+		ID:        DBChirp.ID,
+		CreatedAt: DBChirp.CreatedAt,
+		UpdatedAt: DBChirp.UpdatedAt,
+		Body:      DBChirp.Body,
+		UserID:    DBChirp.UserID,
+	}
+}
+
+func toChirps(DBChirps []database.Chirp) []Chirp {
+	chirps := make([]Chirp, len(DBChirps))
+	for i, DBChirp := range DBChirps {
+		chirps[i] = toChirp(DBChirp)
+	}
+	return chirps
 }
 
 func (cfg *apiConfig) chirpHandler(w http.ResponseWriter, r *http.Request) {
@@ -48,22 +65,10 @@ func (cfg *apiConfig) chirpHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func toChirps(DBChirps []database.Chirp) []Chirp {
-	chirps := make([]Chirp, len(DBChirps))
-	for i, DBChirp := range DBChirps {
-		chirps[i] = Chirp{
-			ID: DBChirp.ID,
-			CreatedAt: DBChirp.CreatedAt,
-			UpdatedAt: DBChirp.UpdatedAt,
-			Body: DBChirp.Body,
-			UserID: DBChirp.UserID,
-		} 
-	}
-	return chirps
-}
-
 func (cfg *apiConfig) getAllChirps(w http.ResponseWriter, r *http.Request) {
-	
+	type response struct {
+		Chirp []Chirp
+	}
 	DBChirps, err := cfg.db.GetAllChirps(r.Context())
 	if err != nil {
 		log.Println("error getting chips")
@@ -71,13 +76,29 @@ func (cfg *apiConfig) getAllChirps(w http.ResponseWriter, r *http.Request) {
 	}
 
 	chirps := toChirps(DBChirps)
-	w.Header().Set("Content-Type", "application/json")
-	data, err := json.Marshal(chirps)
+	respondWithJSON(w, http.StatusOK, response{
+		Chirp: chirps,
+	})
+}
+
+func (cfg *apiConfig) getChirp(w http.ResponseWriter, r *http.Request) {
+	type response struct {
+		Chirp
+	}
+	IDStr := r.PathValue("chirpID")
+	id, err := uuid.Parse(IDStr)
 	if err != nil {
-		log.Println("error json marshal")
-		w.WriteHeader(500)
+		errorHandler(w, r, http.StatusInternalServerError, "Couldn't parse UUID", err)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
-	w.Write(data)
+
+	DBChirp, err := cfg.db.GetChirpByID(r.Context(), id)
+	if err != nil {
+		errorHandler(w, r, http.StatusNotFound, "Not found", err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, response{
+		Chirp: toChirp(DBChirp),
+	})
 }
