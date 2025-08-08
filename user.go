@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
+	"github.com/Sheikh-Fahad-Ahmed/chirpy/internal/auth"
 	"github.com/Sheikh-Fahad-Ahmed/chirpy/internal/database"
 	"github.com/google/uuid"
 )
@@ -18,9 +20,10 @@ type User struct {
 
 type userReqParams struct {
 	Email string `json:"email"`
+	Password string `json:"password"`
 }
 
-func NewUserFromDB(dbUser database.User) User {
+func NewUserFromDB(dbUser database.CreateUserRow) User {
 	return User{
 		ID:        dbUser.ID,
 		CreatedAt: dbUser.CreatedAt,
@@ -37,8 +40,19 @@ func (cfg *apiConfig) userHandler(w http.ResponseWriter, r *http.Request) {
 		errorHandler(w, r, http.StatusInternalServerError, "Couldn't Decode parameters", err)
 		return
 	}
+
+	hashPassword, err := auth.HashPassword(params.Password)
+	if err != nil {
+		log.Println("error hashing the password:", err)
+		return
+	}
+
+	args := database.CreateUserParams{
+		Email: params.Email,
+		HashedPassword: hashPassword,
+	}
  
-	dbUser, err := cfg.db.CreateUser(r.Context(), params.Email)
+	dbUser, err := cfg.db.CreateUser(r.Context(), args)
 	if err != nil {
 		errorHandler(w, r, http.StatusInternalServerError, "Couldn't create user", err)
 		return
