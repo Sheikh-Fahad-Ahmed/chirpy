@@ -19,7 +19,7 @@ type User struct {
 }
 
 type userReqParams struct {
-	Email string `json:"email"`
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
@@ -48,10 +48,10 @@ func (cfg *apiConfig) userHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	args := database.CreateUserParams{
-		Email: params.Email,
+		Email:          params.Email,
 		HashedPassword: hashPassword,
 	}
- 
+
 	dbUser, err := cfg.db.CreateUser(r.Context(), args)
 	if err != nil {
 		errorHandler(w, r, http.StatusInternalServerError, "Couldn't create user", err)
