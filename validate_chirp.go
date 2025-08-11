@@ -9,7 +9,7 @@ import (
 
 type respParams struct {
 	Body   string    `json:"body"`
-	UserID uuid.UUID `json:"user_id"`
+	UserID uuid.UUID 
 }
 
 func validateChirpHandler(w http.ResponseWriter, r *http.Request) *respParams {
