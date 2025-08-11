@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -11,8 +12,9 @@ import (
 
 func (cfg *apiConfig) authenticateUser(w http.ResponseWriter, r *http.Request) {
 	type loginReqParams struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Email            string `json:"email"`
+		Password         string `json:"password"`
+		ExpiresInSeconds *int   `json:"expires_in_seconds"`
 	}
 
 	type User struct {
@@ -20,6 +22,7 @@ func (cfg *apiConfig) authenticateUser(w http.ResponseWriter, r *http.Request) {
 		CreatedAt time.Time `json:"created_at"`
 		UpdatedAt time.Time `json:"updated_at"`
 		Email     string    `json:"email"`
+		Token     string    `json:"token"`
 	}
 
 	type response struct {
@@ -45,12 +48,29 @@ func (cfg *apiConfig) authenticateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var expiresIn time.Duration
+	if params.ExpiresInSeconds == nil {
+		expiresIn = time.Hour
+	} else {
+		expiresIn = time.Duration(*params.ExpiresInSeconds) * time.Second
+		if expiresIn > time.Hour {
+			expiresIn = time.Hour
+		}
+	}
+
+	token, err := auth.MakeJWT(DBUser.ID, cfg.secretKey, expiresIn)
+	if err != nil {
+		log.Fatal("error creating JWT:", err)
+		return
+	}
+
 	respondWithJSON(w, http.StatusOK, response{
 		User: User{
 			ID:        DBUser.ID,
 			CreatedAt: DBUser.CreatedAt,
 			UpdatedAt: DBUser.UpdatedAt,
 			Email:     DBUser.Email,
+			Token:     token,
 		},
 	})
 }
