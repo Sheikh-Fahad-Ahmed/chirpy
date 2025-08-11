@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Sheikh-Fahad-Ahmed/chirpy/internal/auth"
 	"github.com/Sheikh-Fahad-Ahmed/chirpy/internal/database"
 	"github.com/google/uuid"
 )
@@ -40,13 +41,25 @@ func (cfg *apiConfig) chirpHandler(w http.ResponseWriter, r *http.Request) {
 		Chirp
 	}
 
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	userId, err := auth.ValidateJWT(token, cfg.secretKey)
+	if err != nil {
+		errorHandler(w, r, http.StatusUnauthorized, "Unauthorized", err)
+		return
+	}
+
 	params := validateChirpHandler(w, r)
 	if params == nil {
 		return
 	}
 	args := database.CreateChirpParams{
 		Body:   params.Body,
-		UserID: params.UserID,
+		UserID: userId,
 	}
 	chirp, err := cfg.db.CreateChirp(r.Context(), args)
 	if err != nil {
