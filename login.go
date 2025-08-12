@@ -7,22 +7,23 @@ import (
 	"time"
 
 	"github.com/Sheikh-Fahad-Ahmed/chirpy/internal/auth"
+	"github.com/Sheikh-Fahad-Ahmed/chirpy/internal/database"
 	"github.com/google/uuid"
 )
 
 func (cfg *apiConfig) authenticateUser(w http.ResponseWriter, r *http.Request) {
 	type loginReqParams struct {
-		Email            string `json:"email"`
-		Password         string `json:"password"`
-		ExpiresInSeconds *int   `json:"expires_in_seconds"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 
 	type User struct {
-		ID        uuid.UUID `json:"id"`
-		CreatedAt time.Time `json:"created_at"`
-		UpdatedAt time.Time `json:"updated_at"`
-		Email     string    `json:"email"`
-		Token     string    `json:"token"`
+		ID           uuid.UUID `json:"id"`
+		CreatedAt    time.Time `json:"created_at"`
+		UpdatedAt    time.Time `json:"updated_at"`
+		Email        string    `json:"email"`
+		Token        string    `json:"token"`
+		RefreshToken string    `json:"refresh_token"`
 	}
 
 	type response struct {
@@ -48,29 +49,39 @@ func (cfg *apiConfig) authenticateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var expiresIn time.Duration
-	if params.ExpiresInSeconds == nil {
-		expiresIn = time.Hour
-	} else {
-		expiresIn = time.Duration(*params.ExpiresInSeconds) * time.Second
-		if expiresIn > time.Hour {
-			expiresIn = time.Hour
-		}
-	}
+	expiresIn := time.Hour
 
 	token, err := auth.MakeJWT(DBUser.ID, cfg.secretKey, expiresIn)
 	if err != nil {
 		log.Fatal("error creating JWT:", err)
 		return
 	}
+	refreshToken, err := auth.MakeRefreshToken()
+	if err != nil {
+		log.Println("error making refresh token")
+		return
+	}
+
+	refreshTokenParams := database.CreateRefreshTokenParams{
+		Token:     refreshToken,
+		UserID:    DBUser.ID,
+		ExpiresAt: time.Now().Add(60 * 24 * time.Hour),
+	}
+
+	refreshTokenData, err := cfg.db.CreateRefreshToken(r.Context(), refreshTokenParams)
+	if err != nil {
+		errorHandler(w, r, http.StatusInternalServerError, "Could not create refresh token", err)
+		return
+	}
 
 	respondWithJSON(w, http.StatusOK, response{
 		User: User{
-			ID:        DBUser.ID,
-			CreatedAt: DBUser.CreatedAt,
-			UpdatedAt: DBUser.UpdatedAt,
-			Email:     DBUser.Email,
-			Token:     token,
+			ID:           DBUser.ID,
+			CreatedAt:    DBUser.CreatedAt,
+			UpdatedAt:    DBUser.UpdatedAt,
+			Email:        DBUser.Email,
+			Token:        token,
+			RefreshToken: refreshTokenData.Token,
 		},
 	})
 }
