@@ -95,6 +95,7 @@ func main() {
 	mux.HandleFunc("POST /api/login", apicfg.authenticateUser)
 	mux.HandleFunc("POST /api/chirps", apicfg.chirpHandler)
 	mux.HandleFunc("POST /api/users", apicfg.userHandler)
+	mux.HandleFunc("POST /api/refresh", apicfg.refreshHandler)
 
 	server := &http.Server{
 		Addr:    ":" + port,
