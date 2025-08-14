@@ -62,3 +62,50 @@ func (cfg *apiConfig) userHandler(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusCreated, user)
 
 }
+
+func (cfg *apiConfig) userPUTHandler (w http.ResponseWriter, r *http.Request) {
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		errorHandler(w, r, http.StatusUnauthorized, "token malformed or missing", err)
+		return
+	}
+
+	userID, err := auth.ValidateJWT(token, cfg.secretKey)
+	if err != nil {
+		errorHandler(w, r, http.StatusUnauthorized, "invalid token", err)
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	params := userReqParams{}
+	err = decoder.Decode(&params)
+	if err != nil {
+		errorHandler(w, r, http.StatusInternalServerError, "couldn't Decode parameters", err)
+		return
+	}
+
+	hashedPassword, err := auth.HashPassword(params.Password)
+	if err != nil {
+		errorHandler(w, r, http.StatusInternalServerError, "error hashing password", err)
+		return
+	}
+
+	args := database.UpdateUserEmailAndPassParams{
+		Email:          params.Email,
+		HashedPassword: hashedPassword,
+		ID:             userID,
+	}
+
+	DBUser, err := cfg.db.UpdateUserEmailAndPass(r.Context(), args)
+	if err != nil {
+		errorHandler(w, r, http.StatusInternalServerError, "Couldn't update email and password", err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, User{
+		ID:        DBUser.ID,
+		CreatedAt: DBUser.CreatedAt,
+		UpdatedAt: DBUser.UpdatedAt,
+		Email:     DBUser.Email,
+	})
+}
