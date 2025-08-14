@@ -24,6 +24,7 @@ func (cfg *apiConfig) authenticateUser(w http.ResponseWriter, r *http.Request) {
 		Email        string    `json:"email"`
 		Token        string    `json:"token"`
 		RefreshToken string    `json:"refresh_token"`
+		IsChirpyRed  bool   `json:"is_chirpy_red"`
 	}
 
 	type response struct {
@@ -82,6 +83,7 @@ func (cfg *apiConfig) authenticateUser(w http.ResponseWriter, r *http.Request) {
 			Email:        DBUser.Email,
 			Token:        token,
 			RefreshToken: refreshTokenData.Token,
+			IsChirpyRed: DBUser.IsChirpyRed,
 		},
 	})
 }
