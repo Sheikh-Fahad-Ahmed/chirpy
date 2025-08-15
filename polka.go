@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/Sheikh-Fahad-Ahmed/chirpy/internal/auth"
 	"github.com/google/uuid"
 )
 
@@ -22,6 +23,17 @@ func (cfg *apiConfig) polkaWebhookHandler(w http.ResponseWriter, r *http.Request
 	err := decoder.Decode(&params)
 	if err != nil {
 		errorHandler(w, r, http.StatusInternalServerError, "couldn't decode params", err)
+	}
+
+	apiKey, err := auth.GetAPIKey(r.Header)
+	if err != nil {
+		errorHandler(w, r, http.StatusUnauthorized, "couldn't get api key", err)
+		return
+	}
+
+	if apiKey != cfg.polkaKey {
+		errorHandler(w, r, http.StatusUnauthorized, "request Unauthorized", nil)
+		return
 	}
 
 	if params.Event != "user.upgraded" {
