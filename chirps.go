@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/Sheikh-Fahad-Ahmed/chirpy/internal/auth"
@@ -79,19 +80,39 @@ func (cfg *apiConfig) chirpHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *apiConfig) getAllChirps(w http.ResponseWriter, r *http.Request) {
-	type response struct {
-		Chirp []Chirp
+	author_idSTR := r.URL.Query().Get("author_id")
+	var author_id uuid.UUID
+	var err error
+
+	if author_idSTR != "" {
+		author_id, err = uuid.Parse(author_idSTR)
+		if err != nil {
+			errorHandler(w, r, http.StatusInternalServerError, "couldn't parse author id", err)
+		}
+
+	} else {
+		author_id = uuid.Nil
 	}
-	DBChirps, err := cfg.db.GetAllChirps(r.Context())
+
+	sortType := r.URL.Query().Get("sort")
+
+	DBChirps, err := cfg.db.GetAllChirps(r.Context(), author_id)
 	if err != nil {
 		log.Println("error getting chips")
 		return
 	}
 
 	chirps := toChirps(DBChirps)
-	respondWithJSON(w, http.StatusOK, response{
-		Chirp: chirps,
-	})
+	if sortType == "desc" {
+		sort.Slice(chirps, func(i, j int) bool {
+			return chirps[i].CreatedAt.After(chirps[j].CreatedAt)
+		})
+	} else {
+		sort.Slice(chirps, func(i, j int) bool {
+			return chirps[i].CreatedAt.Before(chirps[j].CreatedAt)
+		})
+	}
+	respondWithJSON(w, http.StatusOK, chirps)
 }
 
 func (cfg *apiConfig) getChirp(w http.ResponseWriter, r *http.Request) {
